@@ -956,26 +956,28 @@ builtin setopt noaliases
     -zplg-any-to-user-plugin "$1" "$2"
     local user="${reply[-2]}" plugin="${reply[-1]}" id_as="${ZPLG_ICE[id-as]:-${reply[-2]}${${reply[-2]:#(%|/)*}:+/}${reply[-1]}}"
     ZPLG_ICE[teleid]="$user${${user:#(%|/)*}:+/}$plugin"
+    local local_dir_path="${${${(M)user:#%}:+$plugin}:-${ZPLGM[PLUGINS_DIR]}/${${${${${(M)id_as#\!}:+${ZPLG_ICE[teleid]}}:-$id_as}}//\//---}}"
+    id_as="${id_as#\!}"
+    ZPLGM[alias-map-$id_as]="$local_dir_path"
 
     ZPLG_SICE[$id_as]=""
     -zplg-pack-ice "$id_as"
-    -zplg-register-plugin "$id_as" "$mode"
-    if [[ "$user" != "%" && ! -d "${ZPLGM[PLUGINS_DIR]}/${id_as//\//---}" ]]; then
+    if [[ "$user" != "%" && ! -d "$local_dir_path" ]]; then
         (( ${+functions[-zplg-setup-plugin-dir]} )) || builtin source ${ZPLGM[BIN_DIR]}"/zplugin-install.zsh"
-        if ! -zplg-setup-plugin-dir "$user" "$plugin" "$id_as"; then
-            -zplg-unregister-plugin "$id_as"
+        if ! -zplg-setup-plugin-dir "$user" "$plugin" "$id_as" "$local_dir_path"; then
             zle && { print; zle .reset-prompt; }
             return
         fi
         zle && rst=1
     fi
+    -zplg-register-plugin "$id_as" "$mode"
 
     # Support Zsh plugin standard
     LOADED_PLUGINS+=( "$id_as" )
 
-    (( ${+ZPLG_ICE[atinit]} )) && { local __oldcd="$PWD"; () { setopt localoptions noautopushd; builtin cd -q "${${${(M)user:#%}:+$plugin}:-${ZPLGM[PLUGINS_DIR]}/${id_as//\//---}}"; } && eval "${ZPLG_ICE[atinit]}"; () { setopt localoptions noautopushd; builtin cd -q "$__oldcd"; }; }
+    (( ${+ZPLG_ICE[atinit]} )) && { local __oldcd="$PWD"; () { setopt localoptions noautopushd; builtin cd -q "$local_dir_path"; } && eval "${ZPLG_ICE[atinit]}"; () { setopt localoptions noautopushd; builtin cd -q "$__oldcd"; }; }
 
-    -zplg-load-plugin "$user" "$plugin" "$id_as" "$mode" "$rst"; retval=$?
+    -zplg-load-plugin "$user" "$plugin" "$id_as" "$local_dir_path" "$mode" "$rst"; retval=$?
     ZPLGM[TIME_INDEX]=$(( ${ZPLGM[TIME_INDEX]:-0} + 1 ))
     ZPLGM[TIME_${ZPLGM[TIME_INDEX]}_${id_as//\//---}]=$SECONDS
     return $retval
@@ -1179,13 +1181,11 @@ builtin setopt noaliases
 # $2 - plugin
 # $3 - mode (light or load)
 -zplg-load-plugin() {
-    local user="$1" plugin="$2" id_as="$3" mode="$4" correct=0 retval=0
+    local user="$1" plugin="$2" id_as="$3" pdir_path="$4" mode="$5" correct=0 retval=0
     ZPLGM[CUR_USR]="$user" ZPLG_CUR_PLUGIN="$plugin" ZPLGM[CUR_USPL2]="$id_as"
     [[ -o ksharrays ]] && correct=1
 
-    local pbase="${${plugin:t}%(.plugin.zsh|.zsh|.git)}"
-    [[ "$user" = "%" ]] && local pdir_path="$plugin" || local pdir_path="${ZPLGM[PLUGINS_DIR]}/${id_as//\//---}"
-    local pdir_orig="$pdir_path"
+    local pbase="${${plugin:t}%(.plugin.zsh|.zsh|.git)}" pdir_orig="$pdir_path"
 
     if [[ "${ZPLG_ICE[as]}" = "command" ]]; then
         reply=()
@@ -1329,7 +1329,7 @@ builtin setopt noaliases
     setopt localoptions extendedglob noksharrays
     local bit
     for bit; do
-        [[ "$bit" = (#b)(from|proto|cloneopts|depth|wait|load|unload|if|blockf|svn|pick|nopick|src|bpick|as|ver|silent|lucid|mv|cp|atinit|atload|atpull|atclone|make|nomake|nosvn|service|compile|nocompletions|nocompile|multisrc|id-as|bindmap|trackbinds)(*) ]] && ZPLG_ICE[${match[1]}]="${match[2]#(:|=)}"
+        [[ "$bit" = (#b)(from|proto|cloneopts|depth|wait|load|unload|if|blockf|svn|pick|nopick|src|bpick|as|ver|silent|lucid|mv|cp|atinit|atload|atpull|atclone|make|nomake|nosvn|service|compile|nocompletions|nocompile|multisrc|id-as|alias|bindmap|trackbinds)(*) ]] && ZPLG_ICE[${match[1]}]="${match[2]#(:|=)}"
     done
     [[ "${ZPLG_ICE[as]}" = "program" ]] && ZPLG_ICE[as]="command"
     [[ -n "${ZPLG_ICE[pick]}" ]] && ZPLG_ICE[pick]="${ZPLG_ICE[pick]//\$ZPFX/${ZPFX%/}}"

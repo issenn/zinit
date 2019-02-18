@@ -33,7 +33,9 @@
             [[ -d "${reply[-1]}" ]] && return 0 || return 1
         }
     else
-        [[ -d "${ZPLGM[PLUGINS_DIR]}/${reply[-2]:+${reply[-2]}---}${reply[-1]//\//---}" ]] && return 0 || return 1
+        [[ -d "${ZPLGM[PLUGINS_DIR]}/${reply[-2]:+${reply[-2]}---}${reply[-1]//\//---}" ]] && return 0 || {
+            [[ -d "${ZPLGM[alias-map-${reply[-2]:+${reply[-2]}/}${reply[-1]}]}" ]] && return 0 || return 1
+        }
     fi
 } # }}}
 # FUNCTION: -zplg-exists-physically-message {{{

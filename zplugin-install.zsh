@@ -13,7 +13,7 @@ builtin source ${ZPLGM[BIN_DIR]}"/zplugin-side.zsh"
 -zplg-setup-plugin-dir() {
     setopt localoptions extendedglob typesetsilent noksharrays
 
-    local user="$1" plugin="$2" id_as="$3" remote_url_path="${1:+$1/}$2" local_path="${ZPLGM[PLUGINS_DIR]}/${3//\//---}"
+    local user="$1" plugin="$2" id_as="$3" local_path="$4" remote_url_path="${1:+$1/}$2"
 
     local -A sites
     sites=(
@@ -132,7 +132,7 @@ builtin source ${ZPLGM[BIN_DIR]}"/zplugin-side.zsh"
 
     if [[ "$site" != *"releases" && ${ZPLG_ICE[nocompile]} != '!' ]]; then
         # Compile plugin
-        -zplg-compile-plugin "$id_as" ""
+        -zplg-compile-plugin "$id_as" "" "$local_path"
     fi
 
     if [[ "$3" != "-u" ]]; then
@@ -145,12 +145,14 @@ builtin source ${ZPLGM[BIN_DIR]}"/zplugin-side.zsh"
     fi
 
     # After additional executions like atclone'' - install completions (1 - plugins)
+    print before
     (( ${+ZPLG_ICE[nocompletions]} )) || -zplg-install-completions "$id_as" "" "0" ${ZPLG_ICE[silent]+-q}
+    print after
 
     if [[ "$site" != *"releases" && ${ZPLG_ICE[nocompile]} = '!' ]]; then
         # Compile plugin
         LANG=C sleep 0.3
-        -zplg-compile-plugin "$id_as" ""
+        -zplg-compile-plugin "$id_as" "" "$local_path"
     fi
 
     return 0
@@ -325,7 +327,8 @@ builtin source ${ZPLGM[BIN_DIR]}"/zplugin-side.zsh"
 
     -zplg-any-to-user-plugin "$id_as" ""
     local user="${reply[-2]}" plugin="${reply[-1]}" first
-    local plugin_dir="${${${(M)user:#%}:+$plugin}:-${ZPLGM[PLUGINS_DIR]}/${user:+${user}---}${plugin//\//---}}"
+    local plugin_dir="${3:-${${${(M)user:#%}:+$plugin}:-${ZPLGM[PLUGINS_DIR]}/${${${${${(M)id_as#\!}:+${ZPLG_ICE[teleid]}}:-$id_as}}//\//---}}}"
+    id_as="${id_as#\!}"
     local -a list
 
     # No ICE packing because this command is ran
